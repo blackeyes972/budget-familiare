@@ -2,10 +2,12 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from datetime import datetime, date, timedelta
 from typing import List, Dict, Optional
 import json
 import os
+import calendar
 
 # Import moduli personalizzati
 from database_config import (
@@ -63,6 +65,44 @@ def hide_streamlit_ui():
         .icon-button.selected {
             border-color: #1f77b4;
             background-color: #e6f2ff;
+        }
+        
+        /* Styling per report cards */
+        .metric-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 10px 0;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .metric-card h3 {
+            margin: 0;
+            font-size: 24px;
+        }
+        
+        .metric-card p {
+            margin: 5px 0 0 0;
+            opacity: 0.8;
+        }
+        
+        .comparison-positive {
+            color: #2ecc71;
+            font-weight: bold;
+        }
+        
+        .comparison-negative {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        
+        .report-section {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 15px 0;
+            border-left: 4px solid #3498db;
         }
     </style>
     """
@@ -227,6 +267,19 @@ def render_icon_selector(transaction_type: str, category_name: str = "", key_suf
     
     return st.session_state[selected_icon_key]
 
+def format_currency(amount: float) -> str:
+    """Formatta un importo in valuta EUR"""
+    return f"€{amount:,.2f}"
+
+def get_month_name(month: int) -> str:
+    """Restituisce il nome del mese in italiano"""
+    months = {
+        1: "Gennaio", 2: "Febbraio", 3: "Marzo", 4: "Aprile",
+        5: "Maggio", 6: "Giugno", 7: "Luglio", 8: "Agosto", 
+        9: "Settembre", 10: "Ottobre", 11: "Novembre", 12: "Dicembre"
+    }
+    return months.get(month, "Sconosciuto")
+
 # =============================================================================
 # DATA ACCESS LAYER (DAL)
 # =============================================================================
@@ -340,7 +393,9 @@ class TransactionDAL:
                     'entrate': float(entrate),
                     'uscite': float(uscite),
                     'saldo': float(entrate - uscite),
-                    'transactions_count': count
+                    'transactions_count': count,
+                    'start_date': start_date,
+                    'end_date': end_date
                 }
                 
         except Exception as e:
@@ -446,6 +501,245 @@ class TransactionDAL:
         except Exception as e:
             st.error(f"Errore nell'eliminazione transazione: {e}")
             return False
+    
+    def get_category_monthly_summary(self, year: int, month: int) -> pd.DataFrame:
+        """Riepilogo mensile per categoria"""
+        try:
+            with self.db_manager.get_session() as session:
+                from sqlalchemy.sql import func
+                
+                start_date = datetime(year, month, 1)
+                if month == 12:
+                    end_date = datetime(year + 1, 1, 1) - timedelta(days=1)
+                else:
+                    end_date = datetime(year, month + 1, 1) - timedelta(days=1)
+                
+                query = session.query(
+                    Category.name.label('category_name'),
+                    Category.icon.label('category_icon'),
+                    Category.color.label('category_color'),
+                    Transaction.transaction_type,
+                    func.sum(Transaction.amount).label('total_amount'),
+                    func.count(Transaction.id).label('transaction_count'),
+                    func.avg(Transaction.amount).label('avg_amount')
+                ).join(Category, Transaction.category_id == Category.id)\
+                .filter(Transaction.date >= start_date)\
+                .filter(Transaction.date <= end_date)\
+                .group_by(Category.name, Category.icon, Category.color, Transaction.transaction_type)\
+                .order_by(func.sum(Transaction.amount).desc())
+                
+                df = pd.read_sql(query.statement, session.bind)
+                return df
+                
+        except Exception as e:
+            st.error(f"Errore nel riepilogo categorie: {e}")
+            return pd.DataFrame()
+    
+    def get_daily_summary(self, year: int, month: int) -> pd.DataFrame:
+        """Riepilogo giornaliero per un mese"""
+        try:
+            with self.db_manager.get_session() as session:
+                from sqlalchemy.sql import func
+                
+                start_date = datetime(year, month, 1)
+                if month == 12:
+                    end_date = datetime(year + 1, 1, 1) - timedelta(days=1)
+                else:
+                    end_date = datetime(year, month + 1, 1) - timedelta(days=1)
+                
+                query = session.query(
+                    func.date(Transaction.date).label('day'),
+                    Transaction.transaction_type,
+                    func.sum(Transaction.amount).label('daily_amount'),
+                    func.count(Transaction.id).label('daily_count')
+                ).filter(Transaction.date >= start_date)\
+                .filter(Transaction.date <= end_date)\
+                .group_by(func.date(Transaction.date), Transaction.transaction_type)\
+                .order_by(func.date(Transaction.date))
+                
+                df = pd.read_sql(query.statement, session.bind)
+                if not df.empty:
+                    df['day'] = pd.to_datetime(df['day'])
+                
+                return df
+                
+        except Exception as e:
+            st.error(f"Errore nel riepilogo giornaliero: {e}")
+            return pd.DataFrame()
+
+class ReportManager:
+    """Gestore per i report mensili avanzati"""
+    
+    def __init__(self, transaction_dal: TransactionDAL, category_manager: CategoryManager):
+        self.transaction_dal = transaction_dal
+        self.category_manager = category_manager
+    
+    def get_comparison_data(self, current_year: int, current_month: int, compare_months: int = 3) -> Dict:
+        """Ottiene dati di confronto con i mesi precedenti"""
+        comparisons = []
+        
+        for i in range(compare_months):
+            # Calcola mese e anno precedente
+            target_month = current_month - i
+            target_year = current_year
+            
+            while target_month <= 0:
+                target_month += 12
+                target_year -= 1
+            
+            summary = self.transaction_dal.get_monthly_summary(target_year, target_month)
+            summary['month'] = target_month
+            summary['year'] = target_year
+            summary['month_name'] = get_month_name(target_month)
+            summary['is_current'] = (target_month == current_month and target_year == current_year)
+            
+            comparisons.append(summary)
+        
+        return {
+            'comparisons': comparisons,
+            'current_data': comparisons[0] if comparisons else {},
+            'previous_data': comparisons[1] if len(comparisons) > 1 else {}
+        }
+    
+    def calculate_trends(self, year: int, month: int) -> Dict:
+        """Calcola trend e variazioni"""
+        current_data = self.transaction_dal.get_monthly_summary(year, month)
+        
+        # Mese precedente
+        prev_month = month - 1
+        prev_year = year
+        if prev_month <= 0:
+            prev_month = 12
+            prev_year -= 1
+        
+        prev_data = self.transaction_dal.get_monthly_summary(prev_year, prev_month)
+        
+        trends = {}
+        
+        for key in ['entrate', 'uscite', 'saldo']:
+            current_val = current_data.get(key, 0)
+            prev_val = prev_data.get(key, 0)
+            
+            if prev_val != 0:
+                change_percent = ((current_val - prev_val) / abs(prev_val)) * 100
+                change_amount = current_val - prev_val
+            else:
+                change_percent = 100 if current_val > 0 else 0
+                change_amount = current_val
+            
+            trends[key] = {
+                'current': current_val,
+                'previous': prev_val,
+                'change_amount': change_amount,
+                'change_percent': change_percent,
+                'trend': 'up' if change_amount > 0 else 'down' if change_amount < 0 else 'stable'
+            }
+        
+        return trends
+    
+    def get_top_expenses(self, year: int, month: int, limit: int = 10) -> pd.DataFrame:
+        """Ottiene le top spese del mese"""
+        start_date = datetime(year, month, 1)
+        if month == 12:
+            end_date = datetime(year + 1, 1, 1) - timedelta(days=1)
+        else:
+            end_date = datetime(year, month + 1, 1) - timedelta(days=1)
+        
+        df = self.transaction_dal.get_transactions(
+            start_date=start_date,
+            end_date=end_date,
+            transaction_type='Uscita'
+        )
+        
+        if df.empty:
+            return pd.DataFrame()
+        
+        # Ordina per importo decrescente e prendi i top
+        top_df = df.nlargest(limit, 'amount')[['date', 'description', 'amount', 'category_name', 'category_icon']]
+        top_df['date'] = top_df['date'].dt.strftime('%d/%m/%Y')
+        
+        return top_df
+    
+    def get_spending_patterns(self, year: int, month: int) -> Dict:
+        """Analizza i pattern di spesa"""
+        df = self.transaction_dal.get_daily_summary(year, month)
+        
+        if df.empty:
+            return {}
+        
+        # Analisi per giorno della settimana
+        uscite_df = df[df['transaction_type'] == 'Uscita'].copy()
+        
+        if uscite_df.empty:
+            return {}
+        
+        uscite_df['weekday'] = uscite_df['day'].dt.day_name()
+        weekday_spending = uscite_df.groupby('weekday')['daily_amount'].sum().to_dict()
+        
+        # Analisi per settimana del mese
+        uscite_df['week'] = uscite_df['day'].dt.isocalendar().week
+        weekly_spending = uscite_df.groupby('week')['daily_amount'].sum().to_dict()
+        
+        # Media giornaliera
+        avg_daily = uscite_df['daily_amount'].mean()
+        
+        return {
+            'weekday_spending': weekday_spending,
+            'weekly_spending': weekly_spending,
+            'avg_daily_spending': avg_daily,
+            'total_days_with_expenses': len(uscite_df),
+            'highest_spending_day': uscite_df.loc[uscite_df['daily_amount'].idxmax()] if not uscite_df.empty else None
+        }
+    
+    def generate_monthly_insights(self, year: int, month: int) -> List[str]:
+        """Genera insights automatici per il mese"""
+        insights = []
+        
+        # Dati base
+        current_data = self.transaction_dal.get_monthly_summary(year, month)
+        trends = self.calculate_trends(year, month)
+        patterns = self.get_spending_patterns(year, month)
+        
+        # Insight 1: Saldo generale
+        saldo = current_data.get('saldo', 0)
+        if saldo > 0:
+            insights.append(f"💚 Ottimo! Hai risparmiato {format_currency(saldo)} questo mese.")
+        elif saldo < 0:
+            insights.append(f"🔴 Attenzione: hai speso {format_currency(abs(saldo))} in più delle entrate.")
+        else:
+            insights.append("⚖️ Hai raggiunto il pareggio tra entrate e uscite.")
+        
+        # Insight 2: Trend rispetto al mese precedente
+        saldo_trend = trends.get('saldo', {})
+        if saldo_trend.get('change_amount', 0) > 0:
+            insights.append(f"📈 Il tuo saldo è migliorato di {format_currency(saldo_trend['change_amount'])} rispetto al mese scorso.")
+        elif saldo_trend.get('change_amount', 0) < 0:
+            insights.append(f"📉 Il tuo saldo è diminuito di {format_currency(abs(saldo_trend['change_amount']))} rispetto al mese scorso.")
+        
+        # Insight 3: Efficienza di spesa
+        entrate = current_data.get('entrate', 0)
+        uscite = current_data.get('uscite', 0)
+        if entrate > 0:
+            efficiency = (1 - (uscite / entrate)) * 100
+            if efficiency > 20:
+                insights.append(f"🌟 Eccellente controllo delle spese! Hai risparmiato il {efficiency:.1f}% delle tue entrate.")
+            elif efficiency > 0:
+                insights.append(f"👍 Buon controllo delle spese, hai risparmiato il {efficiency:.1f}% delle entrate.")
+            else:
+                insights.append(f"⚠️ Hai speso più delle tue entrate. Considera di rivedere il budget.")
+        
+        # Insight 4: Pattern di spesa
+        if patterns.get('avg_daily_spending'):
+            avg_daily = patterns['avg_daily_spending']
+            insights.append(f"📊 Spesa media giornaliera: {format_currency(avg_daily)}")
+        
+        # Insight 5: Numero di transazioni
+        tx_count = current_data.get('transactions_count', 0)
+        if tx_count > 0:
+            avg_amount = (entrate + uscite) / tx_count if tx_count > 0 else 0
+            insights.append(f"📝 Hai registrato {tx_count} transazioni con un importo medio di {format_currency(avg_amount)}")
+        
+        return insights
 
 # =============================================================================
 # UI COMPONENTS
@@ -677,6 +971,769 @@ class Dashboard:
                 st.plotly_chart(fig_bar, use_container_width=True)
             else:
                 st.info("📝 Nessuna uscita trovata per creare la classifica")
+
+class MonthlyReportManager:
+    """Gestore completo per i report mensili avanzati"""
+    
+    def __init__(self, transaction_dal: TransactionDAL, category_manager: CategoryManager):
+        self.transaction_dal = transaction_dal
+        self.category_manager = category_manager
+        self.report_manager = ReportManager(transaction_dal, category_manager)
+    
+    def render_monthly_reports(self):
+        """Interfaccia principale per i report mensili"""
+        st.header("📊 Report Mensili")
+        
+        # Initialize navigation state
+        if 'report_navigate_to_year' not in st.session_state:
+            st.session_state.report_navigate_to_year = None
+        if 'report_navigate_to_month' not in st.session_state:
+            st.session_state.report_navigate_to_month = None
+        
+        # Selettore mese/anno
+        col1, col2, col3 = st.columns([2, 2, 3])
+        
+        with col1:
+            # Default al mese corrente o al mese navigato
+            current_year = datetime.now().year
+            default_year = st.session_state.report_navigate_to_year or current_year
+            
+            # Calculate index for default year
+            year_range = list(range(current_year - 5, current_year + 2))
+            try:
+                year_index = year_range.index(default_year)
+            except ValueError:
+                year_index = 5  # Default to current year
+            
+            selected_year = st.selectbox(
+                "📅 Anno",
+                year_range,
+                index=year_index,
+                key="report_year"
+            )
+        
+        with col2:
+            current_month = datetime.now().month
+            default_month = st.session_state.report_navigate_to_month or current_month
+            
+            selected_month = st.selectbox(
+                "📅 Mese",
+                range(1, 13),
+                format_func=lambda x: get_month_name(x),
+                index=default_month - 1,
+                key="report_month"
+            )
+        
+        # Clear navigation state after using it
+        if st.session_state.report_navigate_to_year is not None:
+            st.session_state.report_navigate_to_year = None
+            st.session_state.report_navigate_to_month = None
+        
+        with col3:
+            # Info periodo selezionato
+            month_name = get_month_name(selected_month)
+            is_current = (selected_year == current_year and selected_month == current_month)
+            is_future = (selected_year > current_year or 
+                        (selected_year == current_year and selected_month > current_month))
+            
+            if is_current:
+                st.info(f"📊 **{month_name} {selected_year}** (Mese Corrente)")
+            elif is_future:
+                st.warning(f"⏭️ **{month_name} {selected_year}** (Futuro)")
+            else:
+                st.success(f"📈 **{month_name} {selected_year}**")
+        
+        # Se è un mese futuro, mostra messaggio
+        if is_future:
+            st.warning("⚠️ Non ci sono dati per un mese futuro")
+            return
+        
+        # Ottieni dati del mese
+        monthly_data = self.transaction_dal.get_monthly_summary(selected_year, selected_month)
+        
+        if monthly_data['transactions_count'] == 0:
+            st.info(f"📝 Nessuna transazione trovata per {month_name} {selected_year}")
+            self._render_empty_month_suggestions(selected_year, selected_month)
+            return
+        
+        # Layout principale del report
+        self._render_executive_summary(selected_year, selected_month, monthly_data)
+        
+        # Tabs per diverse sezioni del report
+        tab1, tab2, tab3, tab4, tab5 = st.tabs([
+            "📊 Panoramica", 
+            "📈 Trend & Confronti", 
+            "🏷️ Analisi Categorie",
+            "💡 Insights",
+            "📤 Export"
+        ])
+        
+        with tab1:
+            self._render_overview_tab(selected_year, selected_month, monthly_data)
+        
+        with tab2:
+            self._render_trends_tab(selected_year, selected_month)
+        
+        with tab3:
+            self._render_categories_tab(selected_year, selected_month)
+        
+        with tab4:
+            self._render_insights_tab(selected_year, selected_month)
+        
+        with tab5:
+            self._render_export_tab(selected_year, selected_month, monthly_data)
+    
+    def _render_executive_summary(self, year: int, month: int, data: Dict):
+        """Riepilogo esecutivo con metriche chiave"""
+        st.markdown("### 📋 Riepilogo Esecutivo")
+        
+        # Calcola trend
+        trends = self.report_manager.calculate_trends(year, month)
+        
+        # Card metriche principali
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            entrate_trend = trends.get('entrate', {})
+            delta_entrate = entrate_trend.get('change_amount', 0)
+            st.metric(
+                "💰 Entrate Totali",
+                format_currency(data['entrate']),
+                delta=format_currency(delta_entrate) if delta_entrate != 0 else None
+            )
+        
+        with col2:
+            uscite_trend = trends.get('uscite', {})
+            delta_uscite = uscite_trend.get('change_amount', 0)
+            st.metric(
+                "💸 Uscite Totali",
+                format_currency(data['uscite']),
+                delta=format_currency(delta_uscite) if delta_uscite != 0 else None,
+                delta_color="inverse"  # Rosso per aumento uscite
+            )
+        
+        with col3:
+            saldo_trend = trends.get('saldo', {})
+            delta_saldo = saldo_trend.get('change_amount', 0)
+            st.metric(
+                "💵 Saldo Netto",
+                format_currency(data['saldo']),
+                delta=format_currency(delta_saldo) if delta_saldo != 0 else None
+            )
+        
+        with col4:
+            if data['entrate'] > 0:
+                savings_rate = (data['saldo'] / data['entrate']) * 100
+                prev_rate = 0
+                if 'entrate' in trends and trends['entrate']['previous'] > 0:
+                    prev_saldo = trends['saldo']['previous']
+                    prev_entrate = trends['entrate']['previous']
+                    prev_rate = (prev_saldo / prev_entrate) * 100
+                
+                delta_rate = savings_rate - prev_rate
+                st.metric(
+                    "💾 Tasso Risparmio",
+                    f"{savings_rate:.1f}%",
+                    delta=f"{delta_rate:+.1f}%" if prev_rate != 0 else None
+                )
+            else:
+                st.metric("💾 Tasso Risparmio", "N/A")
+        
+        # Status bar colorato
+        if data['saldo'] > 0:
+            st.success(f"✅ Mese positivo con {format_currency(data['saldo'])} di surplus")
+        elif data['saldo'] < 0:
+            st.error(f"⚠️ Mese in deficit di {format_currency(abs(data['saldo']))}")
+        else:
+            st.info("⚖️ Pareggio perfetto tra entrate e uscite")
+    
+    def _render_overview_tab(self, year: int, month: int, data: Dict):
+        """Tab panoramica con grafici principali"""
+        st.subheader("📊 Panoramica Mensile")
+        
+        # Grafici affiancati
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # Grafico a torta entrate vs uscite
+            if data['entrate'] > 0 or data['uscite'] > 0:
+                fig_balance = go.Figure(data=[go.Pie(
+                    labels=['Entrate', 'Uscite'],
+                    values=[data['entrate'], data['uscite']],
+                    marker_colors=['#2ecc71', '#e74c3c'],
+                    hole=0.4
+                )])
+                fig_balance.update_layout(
+                    title="💰 Bilancio Mensile",
+                    showlegend=True,
+                    height=400
+                )
+                st.plotly_chart(fig_balance, use_container_width=True)
+        
+        with col2:
+            # Grafico giornaliero
+            daily_df = self.transaction_dal.get_daily_summary(year, month)
+            if not daily_df.empty:
+                # Pivot per avere entrate e uscite separate
+                daily_pivot = daily_df.pivot_table(
+                    index='day', 
+                    columns='transaction_type', 
+                    values='daily_amount', 
+                    fill_value=0
+                ).reset_index()
+                
+                fig_daily = go.Figure()
+                
+                if 'Entrata' in daily_pivot.columns:
+                    fig_daily.add_trace(go.Scatter(
+                        x=daily_pivot['day'],
+                        y=daily_pivot['Entrata'],
+                        mode='lines+markers',
+                        name='Entrate',
+                        line=dict(color='#2ecc71', width=3),
+                        marker=dict(size=6)
+                    ))
+                
+                if 'Uscita' in daily_pivot.columns:
+                    fig_daily.add_trace(go.Scatter(
+                        x=daily_pivot['day'],
+                        y=daily_pivot['Uscita'],
+                        mode='lines+markers',
+                        name='Uscite',
+                        line=dict(color='#e74c3c', width=3),
+                        marker=dict(size=6)
+                    ))
+                
+                fig_daily.update_layout(
+                    title="📈 Trend Giornaliero",
+                    xaxis_title="Giorno",
+                    yaxis_title="Importo (€)",
+                    hovermode='x unified',
+                    height=400
+                )
+                st.plotly_chart(fig_daily, use_container_width=True)
+        
+        # Statistiche aggiuntive
+        st.divider()
+        st.subheader("📊 Statistiche Dettagliate")
+        
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric("📝 Totale Transazioni", data['transactions_count'])
+        
+        with col2:
+            if data['transactions_count'] > 0:
+                avg_transaction = (data['entrate'] + data['uscite']) / data['transactions_count']
+                st.metric("📈 Importo Medio", format_currency(avg_transaction))
+        
+        with col3:
+            # Giorni con transazioni
+            days_in_month = calendar.monthrange(year, month)[1]
+            daily_df = self.transaction_dal.get_daily_summary(year, month)
+            active_days = len(daily_df['day'].unique()) if not daily_df.empty else 0
+            st.metric("📅 Giorni Attivi", f"{active_days}/{days_in_month}")
+        
+        with col4:
+            if data['uscite'] > 0:
+                avg_daily_spend = data['uscite'] / days_in_month
+                st.metric("💸 Spesa Media/Giorno", format_currency(avg_daily_spend))
+    
+    def _render_trends_tab(self, year: int, month: int):
+        """Tab per trend e confronti"""
+        st.subheader("📈 Trend e Confronti")
+        
+        # Confronto con mesi precedenti
+        comparison_data = self.report_manager.get_comparison_data(year, month, 6)
+        comparisons = comparison_data['comparisons']
+        
+        if len(comparisons) > 1:
+            # Grafico trend ultimi 6 mesi
+            df_trend = pd.DataFrame(comparisons)
+            df_trend['month_year'] = df_trend.apply(lambda x: f"{get_month_name(x['month'])} {x['year']}", axis=1)
+            
+            fig_trend = go.Figure()
+            
+            fig_trend.add_trace(go.Scatter(
+                x=df_trend['month_year'],
+                y=df_trend['entrate'],
+                mode='lines+markers',
+                name='Entrate',
+                line=dict(color='#2ecc71', width=3),
+                marker=dict(size=8)
+            ))
+            
+            fig_trend.add_trace(go.Scatter(
+                x=df_trend['month_year'],
+                y=df_trend['uscite'],
+                mode='lines+markers',
+                name='Uscite',
+                line=dict(color='#e74c3c', width=3),
+                marker=dict(size=8)
+            ))
+            
+            fig_trend.add_trace(go.Scatter(
+                x=df_trend['month_year'],
+                y=df_trend['saldo'],
+                mode='lines+markers',
+                name='Saldo',
+                line=dict(color='#3498db', width=3),
+                marker=dict(size=8)
+            ))
+            
+            fig_trend.update_layout(
+                title="📊 Trend Ultimi 6 Mesi",
+                xaxis_title="Mese",
+                yaxis_title="Importo (€)",
+                hovermode='x unified',
+                height=500
+            )
+            st.plotly_chart(fig_trend, use_container_width=True)
+            
+            # Tabella confronti
+            st.subheader("📋 Confronto Dettagliato")
+            df_display = df_trend[['month_year', 'entrate', 'uscite', 'saldo', 'transactions_count']].copy()
+            df_display.columns = ['Mese', 'Entrate', 'Uscite', 'Saldo', 'Transazioni']
+            df_display['Entrate'] = df_display['Entrate'].apply(format_currency)
+            df_display['Uscite'] = df_display['Uscite'].apply(format_currency)
+            df_display['Saldo'] = df_display['Saldo'].apply(format_currency)
+            
+            st.dataframe(df_display, hide_index=True, use_container_width=True)
+        
+        else:
+            st.info("📊 Servono almeno 2 mesi di dati per mostrare i trend")
+    
+    def _render_categories_tab(self, year: int, month: int):
+        """Tab analisi per categoria"""
+        st.subheader("🏷️ Analisi per Categoria")
+        
+        # Dati categorie
+        category_df = self.transaction_dal.get_category_monthly_summary(year, month)
+        
+        if category_df.empty:
+            st.info("📊 Nessun dato categoria per questo mese")
+            return
+        
+        # Grafici per tipo di transazione
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # Uscite per categoria
+            uscite_df = category_df[category_df['transaction_type'] == 'Uscita']
+            if not uscite_df.empty:
+                fig_uscite = px.pie(
+                    uscite_df,
+                    values='total_amount',
+                    names='category_name',
+                    title="💸 Distribuzione Uscite",
+                    color='category_name',
+                    color_discrete_map={row['category_name']: row['category_color'] 
+                                      for _, row in uscite_df.iterrows()},
+                    height=500
+                )
+                st.plotly_chart(fig_uscite, use_container_width=True)
+        
+        with col2:
+            # Entrate per categoria
+            entrate_df = category_df[category_df['transaction_type'] == 'Entrata']
+            if not entrate_df.empty:
+                fig_entrate = px.pie(
+                    entrate_df,
+                    values='total_amount',
+                    names='category_name',
+                    title="💰 Distribuzione Entrate",
+                    color='category_name',
+                    color_discrete_map={row['category_name']: row['category_color'] 
+                                      for _, row in entrate_df.iterrows()},
+                    height=500
+                )
+                st.plotly_chart(fig_entrate, use_container_width=True)
+        
+        # Top spese del mese
+        st.subheader("🔝 Top Spese del Mese")
+        top_expenses = self.report_manager.get_top_expenses(year, month, 10)
+        
+        if not top_expenses.empty:
+            # Aggiungi numero progressivo
+            top_expenses_display = top_expenses.copy()
+            top_expenses_display.index = range(1, len(top_expenses_display) + 1)
+            top_expenses_display['amount'] = top_expenses_display['amount'].apply(format_currency)
+            top_expenses_display.columns = ['Data', 'Descrizione', 'Importo', 'Categoria', 'Icona']
+            
+            st.dataframe(top_expenses_display, use_container_width=True)
+        else:
+            st.info("📝 Nessuna spesa registrata per questo mese")
+        
+        # Grafico a barre categorie
+        st.subheader("📊 Confronto Categorie")
+        
+        if not category_df.empty:
+            # Ordina per importo totale
+            category_sorted = category_df.sort_values('total_amount', ascending=True)
+            
+            fig_bar = px.bar(
+                category_sorted,
+                x='total_amount',
+                y='category_name',
+                color='transaction_type',
+                orientation='h',
+                title="Importi per Categoria",
+                color_discrete_map={'Entrata': '#2ecc71', 'Uscita': '#e74c3c'},
+                height=max(400, len(category_sorted) * 25)
+            )
+            fig_bar.update_layout(yaxis={'categoryorder': 'total ascending'})
+            st.plotly_chart(fig_bar, use_container_width=True)
+    
+    def _render_insights_tab(self, year: int, month: int):
+        """Tab insights e suggerimenti"""
+        st.subheader("💡 Insights e Suggerimenti")
+        
+        # Genera insights automatici
+        insights = self.report_manager.generate_monthly_insights(year, month)
+        
+        # Mostra insights in card colorate
+        for i, insight in enumerate(insights):
+            if insight.startswith("💚") or insight.startswith("🌟") or insight.startswith("📈"):
+                st.success(insight)
+            elif insight.startswith("🔴") or insight.startswith("⚠️") or insight.startswith("📉"):
+                st.error(insight)
+            elif insight.startswith("👍") or insight.startswith("📊"):
+                st.info(insight)
+            else:
+                st.markdown(f"ℹ️ {insight}")
+        
+        # Pattern di spesa
+        st.divider()
+        st.subheader("🔍 Pattern di Spesa")
+        
+        patterns = self.report_manager.get_spending_patterns(year, month)
+        
+        if patterns:
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                # Spesa per giorno della settimana
+                weekday_data = patterns.get('weekday_spending', {})
+                if weekday_data:
+                    # Ordina i giorni della settimana
+                    weekday_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+                    weekday_names = {
+                        'Monday': 'Lunedì', 'Tuesday': 'Martedì', 'Wednesday': 'Mercoledì',
+                        'Thursday': 'Giovedì', 'Friday': 'Venerdì', 'Saturday': 'Sabato', 'Sunday': 'Domenica'
+                    }
+                    
+                    ordered_data = [(weekday_names[day], weekday_data.get(day, 0)) for day in weekday_order if day in weekday_data]
+                    
+                    if ordered_data:
+                        days, amounts = zip(*ordered_data)
+                        
+                        fig_weekday = px.bar(
+                            x=days,
+                            y=amounts,
+                            title="💳 Spese per Giorno Settimana",
+                            color_discrete_sequence=['#3498db']
+                        )
+                        fig_weekday.update_layout(xaxis_title="Giorno", yaxis_title="Importo (€)")
+                        st.plotly_chart(fig_weekday, use_container_width=True)
+            
+            with col2:
+                # Statistiche pattern
+                st.markdown("**📊 Statistiche Pattern**")
+                
+                avg_daily = patterns.get('avg_daily_spending', 0)
+                if avg_daily > 0:
+                    st.metric("💸 Spesa Media Giornaliera", format_currency(avg_daily))
+                
+                active_days = patterns.get('total_days_with_expenses', 0)
+                if active_days > 0:
+                    st.metric("📅 Giorni con Spese", active_days)
+                
+                # Giorno con spesa massima
+                highest_day = patterns.get('highest_spending_day')
+                if highest_day is not None:
+                    max_day = highest_day['day'].strftime('%d/%m/%Y')
+                    max_amount = highest_day['daily_amount']
+                    st.metric("📈 Giorno Spesa Massima", max_day)
+                    st.metric("💰 Importo Massimo", format_currency(max_amount))
+        
+        # Raccomandazioni personalizzate
+        st.divider()
+        st.subheader("💭 Raccomandazioni")
+        
+        monthly_data = self.transaction_dal.get_monthly_summary(year, month)
+        self._generate_recommendations(monthly_data, patterns)
+    
+    def _generate_recommendations(self, monthly_data: Dict, patterns: Dict):
+        """Genera raccomandazioni personalizzate"""
+        recommendations = []
+        
+        # Analisi saldo
+        saldo = monthly_data.get('saldo', 0)
+        entrate = monthly_data.get('entrate', 0)
+        uscite = monthly_data.get('uscite', 0)
+        
+        if saldo < 0:
+            recommendations.append({
+                'type': 'warning',
+                'title': '⚠️ Saldo Negativo',
+                'text': 'Hai speso più delle tue entrate. Considera di rivedere le spese non essenziali o aumentare le entrate.'
+            })
+        
+        if entrate > 0:
+            savings_rate = (saldo / entrate) * 100
+            if savings_rate < 10:
+                recommendations.append({
+                    'type': 'info',
+                    'title': '💾 Basso Tasso di Risparmio',
+                    'text': f'Il tuo tasso di risparmio è del {savings_rate:.1f}%. Prova a puntare almeno al 20% per una maggiore sicurezza finanziaria.'
+                })
+            elif savings_rate > 30:
+                recommendations.append({
+                    'type': 'success',
+                    'title': '🌟 Ottimo Risparmio!',
+                    'text': f'Complimenti! Il tuo tasso di risparmio del {savings_rate:.1f}% è eccellente. Continua così!'
+                })
+        
+        # Analisi pattern di spesa
+        if patterns:
+            avg_daily = patterns.get('avg_daily_spending', 0)
+            if avg_daily > 0:
+                monthly_projection = avg_daily * 30
+                if monthly_projection > uscite * 1.2:  # 20% sopra la spesa effettiva
+                    recommendations.append({
+                        'type': 'info',
+                        'title': '📊 Pattern di Spesa',
+                        'text': f'La tua spesa media giornaliera suggerisce un budget mensile di {format_currency(monthly_projection)}. Monitora questo trend.'
+                    })
+        
+        # Analisi numero transazioni
+        tx_count = monthly_data.get('transactions_count', 0)
+        if tx_count > 0:
+            avg_tx = (entrate + uscite) / tx_count
+            if avg_tx < 10:
+                recommendations.append({
+                    'type': 'info',
+                    'title': '📝 Molte Micro-Transazioni',
+                    'text': f'Hai molte transazioni piccole (media: {format_currency(avg_tx)}). Considera di raggruppare spese simili per una migliore gestione.'
+                })
+            elif avg_tx > 200:
+                recommendations.append({
+                    'type': 'info',
+                    'title': '💰 Transazioni di Alto Valore',
+                    'text': f'Le tue transazioni hanno un valore medio alto ({format_currency(avg_tx)}). Assicurati di pianificare bene le spese importanti.'
+                })
+        
+        # Mostra raccomandazioni
+        if recommendations:
+            for rec in recommendations:
+                if rec['type'] == 'success':
+                    st.success(f"**{rec['title']}**\n\n{rec['text']}")
+                elif rec['type'] == 'warning':
+                    st.error(f"**{rec['title']}**\n\n{rec['text']}")
+                else:
+                    st.info(f"**{rec['title']}**\n\n{rec['text']}")
+        else:
+            st.info("👍 Il tuo comportamento finanziario sembra equilibrato per questo mese!")
+    
+    def _render_export_tab(self, year: int, month: int, data: Dict):
+        """Tab per export report"""
+        st.subheader("📤 Export Report")
+        
+        month_name = get_month_name(month)
+        
+        # Informazioni export
+        st.info(f"📋 Esporta il report completo di **{month_name} {year}**")
+        
+        # Opzioni di export
+        export_options = st.multiselect(
+            "Sezioni da includere:",
+            [
+                "📊 Riepilogo Esecutivo",
+                "📈 Dati e Trend",
+                "🏷️ Analisi Categorie",
+                "💡 Insights e Raccomandazioni",
+                "📋 Lista Transazioni"
+            ],
+            default=[
+                "📊 Riepilogo Esecutivo",
+                "📈 Dati e Trend",
+                "🏷️ Analisi Categorie"
+            ]
+        )
+        
+        # Formato export
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # Export JSON
+            if st.button("📄 Export JSON", use_container_width=True):
+                report_data = self._generate_report_data(year, month, export_options)
+                
+                json_data = json.dumps(report_data, indent=2, ensure_ascii=False, default=str)
+                filename = f"report_{month_name.lower()}_{year}.json"
+                
+                st.download_button(
+                    label="💾 Download Report JSON",
+                    data=json_data,
+                    file_name=filename,
+                    mime="application/json"
+                )
+        
+        with col2:
+            # Export CSV (solo transazioni)
+            if st.button("📊 Export CSV Transazioni", use_container_width=True):
+                start_date = datetime(year, month, 1)
+                if month == 12:
+                    end_date = datetime(year + 1, 1, 1) - timedelta(days=1)
+                else:
+                    end_date = datetime(year, month + 1, 1) - timedelta(days=1)
+                
+                df = self.transaction_dal.get_transactions(start_date=start_date, end_date=end_date)
+                
+                if not df.empty:
+                    csv_data = df.to_csv(index=False)
+                    filename = f"transazioni_{month_name.lower()}_{year}.csv"
+                    
+                    st.download_button(
+                        label="💾 Download CSV",
+                        data=csv_data,
+                        file_name=filename,
+                        mime="text/csv"
+                    )
+                else:
+                    st.error("❌ Nessuna transazione da esportare")
+        
+        # Preview del report
+        st.divider()
+        st.subheader("👀 Anteprima Report")
+        
+        if export_options:
+            with st.expander("📋 Anteprima Contenuto", expanded=False):
+                preview_data = self._generate_report_data(year, month, export_options)
+                st.json(preview_data)
+    
+    def _generate_report_data(self, year: int, month: int, sections: List[str]) -> Dict:
+        """Genera i dati del report completo"""
+        month_name = get_month_name(month)
+        report_data = {
+            'report_info': {
+                'title': f"Report Mensile {month_name} {year}",
+                'generated_at': datetime.now().isoformat(),
+                'period': {
+                    'year': year,
+                    'month': month,
+                    'month_name': month_name
+                },
+                'sections_included': sections
+            }
+        }
+        
+        # Dati base sempre inclusi
+        monthly_data = self.transaction_dal.get_monthly_summary(year, month)
+        report_data['summary'] = monthly_data
+        
+        # Sezioni condizionali
+        if "📊 Riepilogo Esecutivo" in sections:
+            trends = self.report_manager.calculate_trends(year, month)
+            report_data['executive_summary'] = {
+                'monthly_data': monthly_data,
+                'trends': trends
+            }
+        
+        if "📈 Dati e Trend" in sections:
+            comparison_data = self.report_manager.get_comparison_data(year, month, 6)
+            daily_data = self.transaction_dal.get_daily_summary(year, month)
+            
+            report_data['trends_data'] = {
+                'comparisons': comparison_data['comparisons'],
+                'daily_summary': daily_data.to_dict('records') if not daily_data.empty else []
+            }
+        
+        if "🏷️ Analisi Categorie" in sections:
+            category_data = self.transaction_dal.get_category_monthly_summary(year, month)
+            top_expenses = self.report_manager.get_top_expenses(year, month, 10)
+            
+            report_data['categories_analysis'] = {
+                'category_summary': category_data.to_dict('records') if not category_data.empty else [],
+                'top_expenses': top_expenses.to_dict('records') if not top_expenses.empty else []
+            }
+        
+        if "💡 Insights e Raccomandazioni" in sections:
+            insights = self.report_manager.generate_monthly_insights(year, month)
+            patterns = self.report_manager.get_spending_patterns(year, month)
+            
+            report_data['insights'] = {
+                'automatic_insights': insights,
+                'spending_patterns': patterns
+            }
+        
+        if "📋 Lista Transazioni" in sections:
+            start_date = datetime(year, month, 1)
+            if month == 12:
+                end_date = datetime(year + 1, 1, 1) - timedelta(days=1)
+            else:
+                end_date = datetime(year, month + 1, 1) - timedelta(days=1)
+            
+            transactions_df = self.transaction_dal.get_transactions(start_date=start_date, end_date=end_date)
+            report_data['transactions'] = transactions_df.to_dict('records') if not transactions_df.empty else []
+        
+        return report_data
+    
+    def _render_empty_month_suggestions(self, year: int, month: int):
+        """Suggerimenti per mesi vuoti"""
+        st.subheader("💡 Suggerimenti")
+        
+        # Controlla mesi vicini
+        current_year = datetime.now().year
+        current_month = datetime.now().month
+        
+        # Mese precedente
+        prev_month = month - 1
+        prev_year = year
+        if prev_month <= 0:
+            prev_month = 12
+            prev_year -= 1
+        
+        prev_data = self.transaction_dal.get_monthly_summary(prev_year, prev_month)
+        
+        # Mese successivo (se non futuro)
+        next_month = month + 1
+        next_year = year
+        if next_month > 12:
+            next_month = 1
+            next_year += 1
+        
+        is_next_future = (next_year > current_year or 
+                         (next_year == current_year and next_month > current_month))
+        
+        if not is_next_future:
+            next_data = self.transaction_dal.get_monthly_summary(next_year, next_month)
+        else:
+            next_data = {'transactions_count': 0}
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if prev_data['transactions_count'] > 0:
+                st.info(f"📅 **{get_month_name(prev_month)} {prev_year}** ha {prev_data['transactions_count']} transazioni")
+                if st.button(f"👀 Vedi {get_month_name(prev_month)} {prev_year}", key=f"nav_prev_{prev_year}_{prev_month}"):
+                    # Set navigation state
+                    st.session_state.report_navigate_to_year = prev_year
+                    st.session_state.report_navigate_to_month = prev_month
+                    st.rerun()
+        
+        with col2:
+            if not is_next_future and next_data['transactions_count'] > 0:
+                st.info(f"📅 **{get_month_name(next_month)} {next_year}** ha {next_data['transactions_count']} transazioni")
+                if st.button(f"👀 Vedi {get_month_name(next_month)} {next_year}", key=f"nav_next_{next_year}_{next_month}"):
+                    # Set navigation state
+                    st.session_state.report_navigate_to_year = next_year
+                    st.session_state.report_navigate_to_month = next_month
+                    st.rerun()
+        
+        # Link per aggiungere transazioni
+        st.markdown("---")
+        st.info("💡 **Suggerimento**: Vai alla sezione 'Nuova Transazione' per aggiungere dati a questo mese")
 
 class TransactionManager:
     """Gestione transazioni"""
@@ -1628,6 +2685,7 @@ def main():
                 "📊 Dashboard",
                 "💳 Nuova Transazione", 
                 "📋 Lista Transazioni",
+                "📈 Report Mensili",
                 "🏷️ Gestione Categorie",
                 "🗄️ Gestione Database",
                 "⚙️ Impostazioni"
@@ -1705,6 +2763,10 @@ def main():
     elif page == "📋 Lista Transazioni":
         transaction_manager = TransactionManager(transaction_dal, category_manager)
         transaction_manager.render_transaction_list()
+    
+    elif page == "📈 Report Mensili":
+        report_manager = MonthlyReportManager(transaction_dal, category_manager)
+        report_manager.render_monthly_reports()
         
     elif page == "🏷️ Gestione Categorie":
         st.header("🏷️ Gestione Categorie")
