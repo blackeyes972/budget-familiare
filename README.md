@@ -9,7 +9,7 @@
 
 **Una soluzione completa e moderna per la gestione intelligente delle finanze personali con analisi avanzate**
 
-[🚀 Demo Live](#) • [📖 Documentazione](#documentazione) • [🐛 Report Bug](https://github.com/blackeyes972/budget-familiare/issues) • [💡 Feature Request](https://github.com/blackeyes972/budget-familiare/issues)
+[🚀 Demo Live](#) • [📖 Documentazione](docs/user_manual.md) • [🐛 Report Bug](https://github.com/blackeyes972/budget-familiare/issues) • [💡 Feature Request](https://github.com/blackeyes972/budget-familiare/issues)
 
 </div>
 

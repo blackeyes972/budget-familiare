@@ -125,7 +125,6 @@ tramp
 *.log
 *.db
 config.json
-docs/
 local/
 backups/
 config/
