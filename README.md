@@ -233,7 +233,7 @@ Questo progetto è distribuito sotto licenza MIT. Vedi il file `LICENSE` per mag
 ```
 MIT License
 
-Copyright (c) 2024 Alessandro Castaldi
+Copyright (c) 2025 Alessandro Castaldi
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

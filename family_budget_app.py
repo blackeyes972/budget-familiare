@@ -34,6 +34,149 @@ def hide_streamlit_ui():
         /* Mantiene l'app più pulita */
         .stActionButton {visibility: hidden;}
         
+        /* Enterprise Theme - Modern Professional Look */
+        .main .block-container {
+            padding-top: 2rem;
+            padding-bottom: 2rem;
+        }
+        
+        /* Custom header styling */
+        .enterprise-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .enterprise-header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+        
+        .enterprise-header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+        
+        /* Card components */
+        .feature-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 15px 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            border-left: 4px solid #3498db;
+            transition: transform 0.2s ease;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+        }
+        
+        .feature-card h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+        
+        .stats-card {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin: 10px 0;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .stats-card h2 {
+            margin: 0;
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+        
+        .stats-card p {
+            margin: 5px 0 0 0;
+            opacity: 0.9;
+        }
+        
+        /* Credits specific styling */
+        .credits-container {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .author-section {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+        
+        .badges-container {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 8px 16px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 20px;
+            text-decoration: none;
+            color: white;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+        
+        .badge:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-2px);
+            text-decoration: none;
+            color: white;
+        }
+        
+        .tech-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .tech-item {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            backdrop-filter: blur(5px);
+        }
+        
+        .tech-item h4 {
+            margin: 10px 0 5px 0;
+            font-size: 1.2rem;
+        }
+        
+        .tech-item p {
+            margin: 0;
+            opacity: 0.8;
+            font-size: 0.9rem;
+        }
+        
         /* Styling per icon selector */
         .icon-grid {
             display: grid;
@@ -103,6 +246,110 @@ def hide_streamlit_ui():
             border-radius: 10px;
             margin: 15px 0;
             border-left: 4px solid #3498db;
+        }
+        
+        # Professional navigation */
+        .nav-section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 10px;
+            margin: 5px 0;
+        }
+        
+        .nav-section p {
+            margin: 0;
+            color: #2c3e50;
+        }
+        
+        .nav-section small {
+            color: #7f8c8d;
+        }
+        
+        /* Sidebar headers styling */
+        /* Navigation group headers */
+        .nav-group-header {
+            color: #2c3e50 !important;
+            background: rgba(52, 152, 219, 0.1);
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin: 10px 0 5px 0;
+            padding: 8px 10px;
+            border-radius: 5px;
+            border-left: 3px solid #3498db;
+        }
+        
+        /* Dark theme compatibility */
+        @media (prefers-color-scheme: dark) {
+            .nav-group-header {
+                color: #ecf0f1 !important;
+                background: rgba(52, 152, 219, 0.2);
+            }
+            
+            .sidebar-header {
+                color: #ecf0f1 !important;
+            }
+            
+            .nav-section {
+                background: rgba(255, 255, 255, 0.05) !important;
+            }
+            
+            .nav-section p {
+                color: #ecf0f1 !important;
+            }
+            
+            .nav-section small {
+                color: #bdc3c7 !important;
+            }
+        }
+        
+        /* Force visibility in Streamlit dark theme */
+        .stMarkdown .nav-group-header {
+            color: #2c3e50 !important;
+        }
+        
+        [data-testid="stSidebar"] .nav-group-header {
+            color: #ecf0f1 !important;
+            background: rgba(52, 152, 219, 0.2) !important;
+        }
+        
+        [data-testid="stSidebar"] .sidebar-header {
+            color: #ecf0f1 !important;
+        }
+        
+        [data-testid="stSidebar"] .nav-section {
+            background: rgba(255, 255, 255, 0.05) !important;
+        }
+        
+        [data-testid="stSidebar"] .nav-section p {
+            color: #ecf0f1 !important;
+        }
+        
+        [data-testid="stSidebar"] .nav-section small {
+            color: #bdc3c7 !important;
+        }
+        
+        /* Sidebar headers styling */
+        .sidebar-header {
+            color: #2c3e50;
+            font-weight: 600;
+            font-size: 1rem;
+            margin: 15px 0 10px 0;
+            padding: 8px 10px;
+            background: rgba(52, 152, 219, 0.1);
+            border-radius: 5px;
+            border-left: 3px solid #3498db;
+        }
+        
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .badges-container {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .tech-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
     """
@@ -279,6 +526,315 @@ def get_month_name(month: int) -> str:
         9: "Settembre", 10: "Ottobre", 11: "Novembre", 12: "Dicembre"
     }
     return months.get(month, "Sconosciuto")
+
+def get_project_stats():
+    """Calcola statistiche del progetto"""
+    import os
+    import glob
+    
+    try:
+        # Conta linee di codice
+        python_files = glob.glob("*.py") + glob.glob("**/*.py", recursive=True)
+        total_lines = 0
+        total_files = len(python_files)
+        
+        for file in python_files:
+            try:
+                with open(file, 'r', encoding='utf-8') as f:
+                    total_lines += len(f.readlines())
+            except:
+                pass
+        
+        # Statistiche features
+        features = [
+            "Dashboard Interattiva", "Gestione Transazioni", "Report Mensili",
+            "Analisi Categorie", "Multi-Database", "Export/Import",
+            "Backup Automatico", "Sistema Insights", "Grafici Avanzati",
+            "Gestione File", "Ricerca Avanzata", "Pattern Analysis"
+        ]
+        
+        # Statistiche tecniche
+        technologies = [
+            "Streamlit", "SQLAlchemy", "Plotly", "Pandas", 
+            "SQLite", "PostgreSQL", "MySQL", "Python"
+        ]
+        
+        return {
+            'lines_of_code': total_lines,
+            'files_count': total_files,
+            'features_count': len(features),
+            'technologies_count': len(technologies),
+            'features': features,
+            'technologies': technologies
+        }
+    except:
+        # Fallback stats
+        return {
+            'lines_of_code': 3000,
+            'files_count': 4,
+            'features_count': 12,
+            'technologies_count': 8,
+            'features': [
+                "Dashboard Interattiva", "Gestione Transazioni", "Report Mensili",
+                "Analisi Categorie", "Multi-Database", "Export/Import",
+                "Backup Automatico", "Sistema Insights", "Grafici Avanzati",
+                "Gestione File", "Ricerca Avanzata", "Pattern Analysis"
+            ],
+            'technologies': [
+                "Streamlit", "SQLAlchemy", "Plotly", "Pandas", 
+                "SQLite", "PostgreSQL", "MySQL", "Python"
+            ]
+        }
+
+def render_credits_page():
+    """Renderizza la pagina Credits professionale"""
+    
+    # Header enterprise
+    st.markdown("""
+    <div class="enterprise-header">
+        <h1>💰 Budget Familiare Professional</h1>
+        <p>Enterprise-Grade Personal Finance Management System</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Statistiche del progetto
+    stats = get_project_stats()
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.markdown(f"""
+        <div class="stats-card">
+            <h2>{stats['lines_of_code']:,}</h2>
+            <p>Linee di Codice</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown(f"""
+        <div class="stats-card">
+            <h2>{stats['features_count']}</h2>
+            <p>Funzionalità</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col3:
+        st.markdown(f"""
+        <div class="stats-card">
+            <h2>{stats['technologies_count']}</h2>
+            <p>Tecnologie</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col4:
+        st.markdown(f"""
+        <div class="stats-card">
+            <h2>{stats['files_count']}</h2>
+            <p>File Progetto</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Sezione Autore
+    st.markdown("""
+    <div class="credits-container">
+        <div class="author-section">
+            <h2>👨‍💻 Autore</h2>
+            <h3>Alessandro Castaldi</h3>
+            <p><em>Software Engineer & Full Stack Developer</em></p>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Badges con Streamlit columns per miglior compatibilità
+    st.subheader("📬 Contatti")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("**📧 Email**")
+        st.markdown("[notifiche72@gmail.com](mailto:notifiche72@gmail.com)")
+        
+        st.markdown("**🐙 GitHub**")
+        st.markdown("[blackeyes972](https://github.com/blackeyes972)")
+    
+    with col2:
+        st.markdown("**🐦 Twitter**")
+        st.markdown("[@blackeyes972](https://x.com/blackeyes972)")
+        
+        st.markdown("**💼 LinkedIn**")
+        st.markdown("[Alessandro Castaldi](https://www.linkedin.com/in/alessandro-castaldi-663846a5/)")
+    
+    # Sezione Ringraziamenti
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 15px; margin: 20px 0; text-align: center;">
+        <h2>🙏 Ringraziamenti</h2>
+        <div class="tech-grid">
+            <div class="tech-item">
+                <h4>🚀 Streamlit</h4>
+                <p>Framework incredibile per app web Python</p>
+            </div>
+            <div class="tech-item">
+                <h4>📊 Plotly</h4>
+                <p>Grafici interattivi e visualizzazioni avanzate</p>
+            </div>
+            <div class="tech-item">
+                <h4>🗄️ SQLAlchemy</h4>
+                <p>ORM potente e flessibile per database</p>
+            </div>
+            <div class="tech-item">
+                <h4>🐍 Python</h4>
+                <p>Linguaggio di programmazione versatile</p>
+            </div>
+            <div class="tech-item">
+                <h4>🎨 Open Source</h4>
+                <p>Comunità per l'ispirazione continua</p>
+            </div>
+            <div class="tech-item">
+                <h4>💻 GitHub</h4>
+                <p>Piattaforma per collaborazione e versioning</p>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Sezione Features
+    st.subheader("🚀 Funzionalità Principali")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("""
+        <div class="feature-card">
+            <h3>📊 Dashboard Avanzata</h3>
+            <p>• Panoramica finanziaria in tempo reale<br>
+            • Grafici interattivi con Plotly<br>
+            • Metriche intelligenti personalizzate<br>
+            • Analisi trend automatica</p>
+        </div>
+        
+        <div class="feature-card">
+            <h3>💳 Gestione Transazioni</h3>
+            <p>• Aggiunta rapida e intuitiva<br>
+            • Categorizzazione automatica<br>
+            • Sistema di tag avanzato<br>
+            • Ricerca e filtri potenti</p>
+        </div>
+        
+        <div class="feature-card">
+            <h3>📈 Report Mensili</h3>
+            <p>• Analisi dettagliate per periodo<br>
+            • Confronti automatici<br>
+            • Insights personalizzati<br>
+            • Export in multipli formati</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown("""
+        <div class="feature-card">
+            <h3>🗄️ Multi-Database</h3>
+            <p>• Supporto SQLite, PostgreSQL, MySQL<br>
+            • Migrazione dati automatica<br>
+            • Backup e restore integrato<br>
+            • Gestione configurazioni multiple</p>
+        </div>
+        
+        <div class="feature-card">
+            <h3>🏷️ Sistema Categorie</h3>
+            <p>• Categorie personalizzabili<br>
+            • Icone e colori custom<br>
+            • Suggerimenti automatici<br>
+            • Gestione avanzata</p>
+        </div>
+        
+        <div class="feature-card">
+            <h3>📁 Gestione File</h3>
+            <p>• Organizzazione automatica<br>
+            • Sistema backup avanzato<br>
+            • Export/Import dati<br>
+            • Pulizia file automatica</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Architettura Tecnica
+    st.subheader("🏗️ Architettura Tecnica")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("**🎯 Frontend**")
+        st.markdown("""
+        - **Streamlit** - Framework web interattivo
+        - **Plotly** - Grafici e visualizzazioni
+        - **HTML/CSS** - Styling avanzato
+        - **JavaScript** - Interattività client
+        """)
+        
+        st.markdown("**💾 Database**")
+        st.markdown("""
+        - **SQLite** - Database embedded
+        - **PostgreSQL** - Database enterprise
+        - **MySQL** - Database cloud-ready
+        - **SQLAlchemy** - ORM universale
+        """)
+    
+    with col2:
+        st.markdown("**🐍 Backend**")
+        st.markdown("""
+        - **Python 3.8+** - Linguaggio core
+        - **Pandas** - Analisi e manipolazione dati
+        - **Datetime** - Gestione temporale
+        - **JSON** - Serializzazione dati
+        """)
+        
+        st.markdown("**📦 DevOps**")
+        st.markdown("""
+        - **Git** - Version control
+        - **GitHub** - Repository hosting
+        - **Pip** - Package management
+        - **Virtual Env** - Isolation ambiente
+        """)
+    
+    # Roadmap Futura
+    st.subheader("🛣️ Roadmap Sviluppo Futuro")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.markdown("**📱 Mobile & Web**")
+        st.markdown("""
+        - App mobile nativa
+        - PWA (Progressive Web App)
+        - Sincronizzazione cloud
+        - Notifiche push
+        """)
+    
+    with col2:
+        st.markdown("**🤖 AI & Machine Learning**")
+        st.markdown("""
+        - Predizione spese
+        - Consigli automatici
+        - Anomaly detection
+        - Chatbot assistente
+        """)
+    
+    with col3:
+        st.markdown("**🌐 Enterprise Features**")
+        st.markdown("""
+        - Multi-utente
+        - API REST
+        - Integrazione bancaria
+        - Dashboard admin
+        """)
+    
+    # Footer
+    st.markdown("---")
+    st.markdown("""
+    <div style="text-align: center; padding: 20px; color: #666;">
+        <p>Sviluppato con ❤️ in Italia • © 2024 Alessandro Castaldi</p>
+        <p>Open Source • MIT License • Contribuzioni benvenute!</p>
+    </div>
+    """, unsafe_allow_html=True)
 
 # =============================================================================
 # DATA ACCESS LAYER (DAL)
@@ -2664,38 +3220,78 @@ def main():
     transaction_dal = TransactionDAL(db_manager)
     category_manager = CategoryManager(db_manager)
     
-    # Header
-    st.title("💰 Budget Familiare Professional")
+    # Enterprise Header
+    st.markdown("""
+    <div class="enterprise-header">
+        <h1>💰 Budget Familiare Professional</h1>
+        <p>Enterprise-Grade Personal Finance Management System</p>
+    </div>
+    """, unsafe_allow_html=True)
     
-    # Show current database info
+    # Show current database info in a more professional way
     if current_config:
-        st.markdown(f"*Database: **{current_config['name']}** ({db_info['type'].upper()}) | "
-                    f"Transazioni: {db_info.get('stats', {}).get('transactions', 0)}*")
-    else:
-        st.markdown(f"*Database: {db_info['type'].upper()} | "
-                    f"Transazioni: {db_info.get('stats', {}).get('transactions', 0)}*")
-    
-    # Sidebar
-    with st.sidebar:
-        st.header("🧭 Navigazione")
+        db_type_icon = {
+            'sqlite': '📁',
+            'postgresql': '🐘', 
+            'mysql': '🐬'
+        }.get(db_info['type'], '🗄️')
         
+        st.markdown(f"""
+        <div style="background: #f8f9fa; padding: 10px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #3498db;">
+            <small><strong>{db_type_icon} Database:</strong> {current_config['name']} ({db_info['type'].upper()}) | 
+            <strong>📊 Transazioni:</strong> {db_info.get('stats', {}).get('transactions', 0)} | 
+            <strong>🏷️ Categorie:</strong> {db_info.get('stats', {}).get('categories', 0)}</small>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown(f"""
+        <div style="background: #f8f9fa; padding: 10px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #3498db;">
+            <small><strong>🗄️ Database:</strong> {db_info['type'].upper()} | 
+            <strong>📊 Transazioni:</strong> {db_info.get('stats', {}).get('transactions', 0)}</small>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Sidebar con design enterprise
+    with st.sidebar:
+        # Logo/Header della sidebar
+        st.markdown("""
+        <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; margin-bottom: 20px;">
+            <h2 style="color: white; margin: 0;">💰</h2>
+            <p style="color: white; margin: 5px 0 0 0; opacity: 0.9;">Budget Pro</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown('<div class="sidebar-header">🧭 Navigazione</div>', unsafe_allow_html=True)
+        
+        # Single radio button with visual grouping
         page = st.radio(
-            "Sezioni:",
+            "Sezioni disponibili",
             [
                 "📊 Dashboard",
+                "📈 Report Mensili",
+                "━━━━━━━━━━━━━━━━━",  # Separator
                 "💳 Nuova Transazione", 
                 "📋 Lista Transazioni",
-                "📈 Report Mensili",
                 "🏷️ Gestione Categorie",
+                "━━━━━━━━━━━━━━━━━",  # Separator
                 "🗄️ Gestione Database",
-                "⚙️ Impostazioni"
-            ]
+                "⚙️ Impostazioni",
+                "🏆 Credits"
+            ],
+            key="main_navigation",
+            label_visibility="collapsed",
+            format_func=lambda x: x if x != "━━━━━━━━━━━━━━━━━" else "───────────────────"
         )
+        
+        # Skip separator selections
+        if page == "━━━━━━━━━━━━━━━━━":
+            # If somehow a separator is selected, default to Dashboard
+            page = "📊 Dashboard"
         
         st.divider()
         
-        # Quick stats - now intelligent
-        st.subheader("ℹ️ Info Rapide")
+        # Quick stats in stile enterprise
+        st.markdown('<div class="sidebar-header">📊 Dashboard Rapido</div>', unsafe_allow_html=True)
         
         # Use the smart summary that shows relevant data
         total_summary = transaction_dal.get_total_summary()
@@ -2704,51 +3300,110 @@ def main():
             
             if recent_summary['transactions_count'] > 0:
                 # Show recent data
-                st.metric("💰 Saldo (30gg)", f"€{recent_summary['saldo']:,.2f}")
-                st.metric("📝 Transazioni (30gg)", recent_summary['transactions_count'])
+                st.markdown("""
+                <div class="nav-section">
+                    <p><strong>💰 Saldo (30 giorni)</strong><br>
+                    <span style="font-size: 1.2em; color: #2ecc71;">{}</span></p>
+                </div>
+                """.format(f"€{recent_summary['saldo']:,.2f}"), unsafe_allow_html=True)
+                
+                st.markdown("""
+                <div class="nav-section">
+                    <p><strong>📝 Transazioni (30 giorni)</strong><br>
+                    <span style="font-size: 1.2em; color: #3498db;">{}</span></p>
+                </div>
+                """.format(recent_summary['transactions_count']), unsafe_allow_html=True)
             else:
                 # Show total data
-                st.metric("💰 Saldo Totale", f"€{total_summary['saldo']:,.2f}")
-                st.metric("📝 Transazioni Totali", total_summary['transactions_count'])
+                st.markdown("""
+                <div class="nav-section">
+                    <p><strong>💰 Saldo Totale</strong><br>
+                    <span style="font-size: 1.2em; color: #2ecc71;">{}</span></p>
+                </div>
+                """.format(f"€{total_summary['saldo']:,.2f}"), unsafe_allow_html=True)
+                
+                st.markdown("""
+                <div class="nav-section">
+                    <p><strong>📝 Transazioni Totali</strong><br>
+                    <span style="font-size: 1.2em; color: #3498db;">{}</span></p>
+                </div>
+                """.format(total_summary['transactions_count']), unsafe_allow_html=True)
         else:
-            st.metric("💰 Saldo", "€0.00")
-            st.metric("📝 Transazioni", "0")
+            st.markdown("""
+            <div class="nav-section">
+                <p><strong>💰 Saldo</strong><br>
+                <span style="font-size: 1.2em; color: #95a5a6;">€0.00</span></p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            st.markdown("""
+            <div class="nav-section">
+                <p><strong>📝 Transazioni</strong><br>
+                <span style="font-size: 1.2em; color: #95a5a6;">0</span></p>
+            </div>
+            """, unsafe_allow_html=True)
         
-        # Current database info
+        # Current database info con styling migliore
         st.divider()
+        st.markdown('<div class="sidebar-header">🗄️ Database Attivo</div>', unsafe_allow_html=True)
+        
         if current_config:
             db_config = DatabaseConfig.SUPPORTED_DATABASES.get(db_info['type'], {})
-            st.markdown(f"**{db_config.get('icon', '🗄️')} {current_config['name']}**")
-            st.caption(f"Tipo: {db_info['type'].upper()}")
+            icon = db_config.get('icon', '🗄️')
+            
+            st.markdown(f"""
+            <div class="nav-section">
+                <p><strong>{icon} {current_config['name']}</strong><br>
+                <small>Tipo: {db_info['type'].upper()}</small></p>
+            </div>
+            """, unsafe_allow_html=True)
             
             # Show file location for SQLite
-            if db_info['type'] == 'sqlite' and 'file_location' in db_info:
-                st.caption(f"📂 Cartella: data/")
+            if db_info['type'] == 'sqlite':
+                st.markdown("""
+                <div class="nav-section">
+                    <p><small>📂 Cartella: data/</small></p>
+                </div>
+                """, unsafe_allow_html=True)
         
-        # File structure summary
-        st.subheader("📁 File")
+        # File structure summary migliorato
+        st.markdown('<div class="sidebar-header">📁 Sistema File</div>', unsafe_allow_html=True)
         try:
             files_info = FileManager.list_files_by_type()
-            file_summary = {
-                '💾': len(files_info.get('databases', [])),
-                '📦': len(files_info.get('backups', [])),
-                '📤': len(files_info.get('exports', []))
+            file_icons = {
+                'databases': '💾',
+                'backups': '📦',
+                'exports': '📤',
+                'configs': '⚙️'
             }
             
-            for icon, count in file_summary.items():
-                if count > 0:
-                    st.caption(f"{icon} {count}")
+            for file_type, files in files_info.items():
+                if len(files) > 0 and file_type in file_icons:
+                    st.markdown(f"""
+                    <div class="nav-section">
+                        <p>{file_icons[file_type]} {file_type.title()}: <strong>{len(files)}</strong></p>
+                    </div>
+                    """, unsafe_allow_html=True)
         except:
             pass
         
-        # Quick database switch
-        st.subheader("🔄 Database Veloci")
+        # Quick database switch migliorato
+        st.divider()
+        st.markdown('<div class="sidebar-header">🔄 Switch Rapido</div>', unsafe_allow_html=True)
         configs = DatabaseRegistry.list_database_configs()
-        for config in configs[:3]:  # Show max 3 for quick access
-            if not config['is_current']:
-                if st.button(f"↪️ {config['name']}", key=f"quick_{config['name']}"):
+        quick_configs = [config for config in configs[:3] if not config['is_current']]
+        
+        if quick_configs:
+            for config in quick_configs:
+                if st.button(f"↪️ {config['name']}", key=f"quick_{config['name']}", use_container_width=True):
                     db_ui = DatabaseManagementUI(db_manager)
                     db_ui._switch_to_database(config)
+        else:
+            st.markdown("""
+            <div class="nav-section">
+                <p><small>Nessun altro database configurato</small></p>
+            </div>
+            """, unsafe_allow_html=True)
     
     # Main content routing
     if page == "📊 Dashboard":
@@ -3015,6 +3670,9 @@ def main():
             st.dataframe(config_data, hide_index=True, use_container_width=True)
         else:
             st.info("Nessuna configurazione database salvata")
+    
+    elif page == "🏆 Credits":
+        render_credits_page()
 
 if __name__ == "__main__":
     main()
