@@ -593,7 +593,7 @@ def render_credits_page():
     st.markdown("""
     <div class="enterprise-header">
         <h1>💰 Budget Familiare Professional</h1>
-        <p>Enterprise-Grade Personal Finance Management System</p>
+        <p>Personal Finance Management System</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -3224,7 +3224,7 @@ def main():
     st.markdown("""
     <div class="enterprise-header">
         <h1>💰 Budget Familiare Professional</h1>
-        <p>Enterprise-Grade Personal Finance Management System</p>
+        <p>Personal Finance Management System</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -3592,7 +3592,7 @@ def main():
             st.subheader("🔔 Notifiche")
             st.checkbox("Avvisi budget", disabled=True)
             st.checkbox("Promemoria transazioni ricorrenti", disabled=True)
-            st.checkbox("Report mensili", disabled=True)
+            st.checkbox("Password utente", disabled=True)
         
         st.info("🚧 Impostazioni in sviluppo - funzionalità in arrivo!")
         
