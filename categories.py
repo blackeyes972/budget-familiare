@@ -9,6 +9,168 @@ from typing import List, Dict, Tuple
 from sqlalchemy.orm import Session
 
 
+class IconLibrary:
+    """Libreria di icone organizzate per categorie"""
+    
+    # Icone per ENTRATE
+    ENTRATE_ICONS = {
+        'Lavoro': ['💼', '💻', '🏢', '👨‍💼', '👩‍💼', '⚙️', '🔧', '🏭'],
+        'Investimenti': ['📈', '📊', '💹', '🏦', '💰', '💎', '🪙', '📉'],
+        'Freelance': ['💻', '🎨', '📝', '🎭', '📸', '🎬', '🎵', '✍️'],
+        'Bonus': ['🎁', '🏆', '⭐', '💫', '🌟', '🎉', '🎊', '💝'],
+        'Altro': ['💰', '💵', '💴', '💶', '💷', '🤑', '💸', '🔄']
+    }
+    
+    # Icone per USCITE
+    USCITE_ICONS = {
+        'Casa': ['🏠', '🏡', '🏘️', '🏰', '🏗️', '🏢', '🔑', '🚪'],
+        'Alimentari': ['🛒', '🍎', '🥖', '🥛', '🍕', '🍔', '🥗', '🍇'],
+        'Trasporti': ['🚗', '🚌', '🚇', '✈️', '🚲', '🛵', '⛽', '🚊'],
+        'Sanità': ['🏥', '💊', '🩺', '🦷', '👩‍⚕️', '👨‍⚕️', '💉', '🔬'],
+        'Svago': ['🎉', '🎬', '🎭', '🎪', '🎨', '🎮', '🎲', '🎸'],
+        'Abbigliamento': ['👕', '👔', '👗', '👠', '👟', '👜', '💍', '👓'],
+        'Tecnologia': ['📱', '💻', '🖥️', '⌚', '📷', '🎧', '🖨️', '📺'],
+        'Educazione': ['📚', '✏️', '🎓', '📖', '📝', '🧑‍🎓', '👩‍🏫', '🏫'],
+        'Regali': ['🎁', '💝', '🎀', '🌹', '💐', '🍰', '🎂', '💌'],
+        'Utility': ['💡', '⚡', '💧', '🔥', '📡', '📞', '🌐', '📶'],
+        'Altro': ['🔧', '❓', '📦', '💼', '🗂️', '📋', '⚙️', '🛠️']
+    }
+    
+    # Icone generiche comuni
+    COMMON_ICONS = ['💰', '💵', '📊', '⭐', '🔄', '💎', '🎯', '📈', '📉', '💡']
+    
+    @classmethod
+    def get_icons_for_transaction_type(cls, transaction_type: str) -> Dict[str, List[str]]:
+        """Restituisce le icone organizzate per tipo di transazione"""
+        if transaction_type == 'Entrata':
+            return cls.ENTRATE_ICONS
+        elif transaction_type == 'Uscita':
+            return cls.USCITE_ICONS
+        else:
+            # Return all icons for unknown type
+            all_icons = {}
+            all_icons.update(cls.ENTRATE_ICONS)
+            all_icons.update(cls.USCITE_ICONS)
+            return all_icons
+    
+    @classmethod
+    def get_all_icons_flat(cls, transaction_type: str = None) -> List[str]:
+        """Restituisce tutte le icone come lista piatta"""
+        icons = set(cls.COMMON_ICONS)
+        
+        if transaction_type:
+            icon_dict = cls.get_icons_for_transaction_type(transaction_type)
+            for category_icons in icon_dict.values():
+                icons.update(category_icons)
+        else:
+            # Add all icons
+            for category_icons in cls.ENTRATE_ICONS.values():
+                icons.update(category_icons)
+            for category_icons in cls.USCITE_ICONS.values():
+                icons.update(category_icons)
+        
+        return sorted(list(icons))
+    
+    @classmethod
+    def get_suggested_icons(cls, category_name: str, transaction_type: str) -> List[str]:
+        """Suggerisce icone basate sul nome della categoria"""
+        category_lower = category_name.lower()
+        suggestions = []
+        
+        # Keyword-based suggestions
+        keyword_mapping = {
+            'stipendio': ['💼', '💰', '🏢'],
+            'lavoro': ['💼', '🏢', '👨‍💼'],
+            'freelance': ['💻', '🎨', '📝'],
+            'investimenti': ['📈', '📊', '💹'],
+            'dividendi': ['📈', '💰', '🏦'],
+            'bonus': ['🎁', '🏆', '⭐'],
+            'regalo': ['🎁', '💝', '🎀'],
+            'rimborso': ['🔄', '💰', '↩️'],
+            
+            'casa': ['🏠', '🏡', '🔑'],
+            'affitto': ['🏠', '🏡', '🔑'],
+            'alimentari': ['🛒', '🍎', '🥖'],
+            'spesa': ['🛒', '🍎', '🥛'],
+            'trasporti': ['🚗', '🚌', '⛽'],
+            'auto': ['🚗', '⛽', '🚙'],
+            'carburante': ['⛽', '🚗', '🛵'],
+            'sanità': ['🏥', '💊', '🩺'],
+            'medico': ['🏥', '👩‍⚕️', '🩺'],
+            'dentista': ['🦷', '🏥', '👨‍⚕️'],
+            'svago': ['🎉', '🎬', '🎭'],
+            'cinema': ['🎬', '🍿', '🎭'],
+            'ristorante': ['🍽️', '🍕', '🍔'],
+            'abbigliamento': ['👕', '👔', '👗'],
+            'vestiti': ['👕', '👗', '👠'],
+            'tecnologia': ['📱', '💻', '🖥️'],
+            'computer': ['💻', '🖥️', '⌨️'],
+            'telefono': ['📱', '📞', '☎️'],
+            'educazione': ['📚', '🎓', '✏️'],
+            'corso': ['📚', '🎓', '📖'],
+            'utility': ['💡', '⚡', '💧'],
+            'bolletta': ['💡', '⚡', '📄'],
+            'luce': ['💡', '⚡', '🔆'],
+            'gas': ['🔥', '⛽', '🏠'],
+            'acqua': ['💧', '🚿', '🏠'],
+            'internet': ['🌐', '📡', '💻']
+        }
+        
+        # Find matching keywords
+        for keyword, icons in keyword_mapping.items():
+            if keyword in category_lower:
+                suggestions.extend(icons)
+        
+        # Remove duplicates and limit to 6 suggestions
+        suggestions = list(dict.fromkeys(suggestions))[:6]
+        
+        # If no specific suggestions, use common icons for the transaction type
+        if not suggestions:
+            icon_dict = cls.get_icons_for_transaction_type(transaction_type)
+            if icon_dict:
+                # Take first 3 icons from first category
+                first_category = list(icon_dict.values())[0]
+                suggestions = first_category[:3]
+            
+            # Add some common icons
+            suggestions.extend(cls.COMMON_ICONS[:3])
+        
+        return suggestions[:6]  # Limit to 6 suggestions
+    
+    @classmethod
+    def search_icons(cls, search_term: str, transaction_type: str = None) -> List[str]:
+        """Cerca icone per termine di ricerca"""
+        if not search_term:
+            return cls.get_all_icons_flat(transaction_type)[:20]
+        
+        # Simple emoji name mapping for search
+        emoji_names = {
+            '💰': ['money', 'soldi', 'denaro', 'euro'],
+            '💼': ['work', 'lavoro', 'business', 'ufficio'],
+            '🏠': ['house', 'casa', 'home', 'abitazione'],
+            '🛒': ['shopping', 'spesa', 'carrello', 'supermercato'],
+            '🚗': ['car', 'auto', 'macchina', 'automobile'],
+            '🍕': ['food', 'cibo', 'pizza', 'mangiare'],
+            '📱': ['phone', 'telefono', 'mobile', 'cellulare'],
+            '💡': ['light', 'luce', 'idea', 'lampadina'],
+            '🎉': ['party', 'festa', 'divertimento', 'svago'],
+            '📚': ['book', 'libro', 'studio', 'educazione']
+        }
+        
+        search_lower = search_term.lower()
+        matching_icons = []
+        
+        for icon, names in emoji_names.items():
+            if any(search_lower in name for name in names):
+                matching_icons.append(icon)
+        
+        # If no matches, return all icons
+        if not matching_icons:
+            return cls.get_all_icons_flat(transaction_type)[:20]
+        
+        return matching_icons
+
+
 class DefaultCategories:
     """Gestione categorie di default del sistema"""
     
@@ -468,3 +630,15 @@ class CategoryManager:
         except Exception as e:
             print(f"❌ Errore statistiche categorie: {e}")
             return {}
+    
+    def get_icon_suggestions(self, category_name: str, transaction_type: str) -> List[str]:
+        """Ottiene suggerimenti di icone per una categoria"""
+        return IconLibrary.get_suggested_icons(category_name, transaction_type)
+    
+    def get_available_icons(self, transaction_type: str) -> Dict[str, List[str]]:
+        """Ottiene tutte le icone disponibili organizzate per tipo"""
+        return IconLibrary.get_icons_for_transaction_type(transaction_type)
+    
+    def search_icons(self, search_term: str, transaction_type: str = None) -> List[str]:
+        """Cerca icone per termine"""
+        return IconLibrary.search_icons(search_term, transaction_type)

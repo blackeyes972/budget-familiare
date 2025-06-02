@@ -12,236 +12,220 @@ from database_config import (
     DatabaseConfig, DatabaseManager, DatabaseSwitcher, DatabaseRegistry, FileManager,
     get_database_manager, set_database_manager, check_first_run
 )
-from categories import DefaultCategories, CategoryManager
+from categories import DefaultCategories, CategoryManager, IconLibrary
 from models import Transaction, Category, Budget, Goal
 
 # =============================================================================
-# UI CUSTOMIZATION & BRANDING
+# UTILITY FUNCTIONS
 # =============================================================================
 
-def apply_custom_styling():
-    """Applica styling personalizzato per un look professionale"""
-    custom_css = """
+def hide_streamlit_ui():
+    """Nasconde elementi UI di Streamlit per look professionale"""
+    hide_streamlit_style = """
     <style>
-        /* Nasconde elementi Streamlit per look professionale */
+        /* Nasconde il menu Deploy e altri elementi Streamlit */
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
         header {visibility: hidden;}
         .stDeployButton {visibility: hidden;}
-        .stDecoration {display: none;}
         
-        /* Mantiene il menu hamburger per funzionalità fullscreen */
-        [data-testid="collapsedControl"] {visibility: visible !important;}
+        /* Mantiene l'app più pulita */
+        .stActionButton {visibility: hidden;}
         
-        /* Styling per l'header personalizzato */
-        .custom-header {
-            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-            padding: 1rem 2rem;
-            border-radius: 10px;
-            margin-bottom: 2rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        /* Styling per icon selector */
+        .icon-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+            gap: 5px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            max-height: 200px;
+            overflow-y: auto;
         }
         
-        .custom-header h1 {
-            color: white;
-            margin: 0;
-            font-size: 2.5rem;
-            font-weight: 700;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        }
-        
-        .custom-header .subtitle {
-            color: #e8f4fd;
-            margin: 0;
-            font-size: 1.1rem;
-            font-weight: 300;
-            opacity: 0.9;
-        }
-        
-        /* Styling per metriche dashboard */
-        .metric-container {
-            background: white;
-            padding: 1.5rem;
-            border-radius: 10px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            border-left: 4px solid #667eea;
-        }
-        
-        /* Footer autore personalizzato */
-        .author-footer {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 2rem;
-            border-radius: 15px;
-            margin-top: 3rem;
+        .icon-button {
+            background: none;
+            border: 2px solid transparent;
+            border-radius: 8px;
+            padding: 8px;
+            font-size: 24px;
+            cursor: pointer;
+            transition: all 0.2s;
             text-align: center;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
         }
         
-        .author-footer h3 {
-            margin-bottom: 1rem;
-            color: white;
-            font-size: 1.5rem;
+        .icon-button:hover {
+            border-color: #1f77b4;
+            background-color: #f0f8ff;
         }
         
-        .author-links {
-            display: flex;
-            justify-content: center;
-            gap: 1rem;
-            flex-wrap: wrap;
-            margin-top: 1rem;
-        }
-        
-        .author-link {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 25px;
-            padding: 0.5rem 1rem;
-            text-decoration: none;
-            color: white;
-            font-weight: 500;
-            transition: all 0.3s ease;
-            backdrop-filter: blur(10px);
-        }
-        
-        .author-link:hover {
-            background: rgba(255, 255, 255, 0.2);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-        }
-        
-        /* Responsive design */
-        @media (max-width: 768px) {
-            .custom-header h1 {
-                font-size: 2rem;
-            }
-            .author-links {
-                flex-direction: column;
-                align-items: center;
-            }
+        .icon-button.selected {
+            border-color: #1f77b4;
+            background-color: #e6f2ff;
         }
     </style>
     """
-    st.markdown(custom_css, unsafe_allow_html=True)
+    st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
-def render_custom_header():
-    """Renderizza header personalizzato con branding"""
-    header_html = """
-    <div class="custom-header">
-        <h1>💰 Budget Familiare Professional</h1>
-        <p class="subtitle">Gestione Intelligente delle Finanze Personali | Sviluppato da Alessandro Castaldi</p>
-    </div>
-    """
-    st.markdown(header_html, unsafe_allow_html=True)
-
-def render_author_info():
-    """Renderizza informazioni sull'autore nella sezione impostazioni"""
-    st.subheader("👨‍💻 Informazioni Sviluppatore")
+def render_icon_selector(transaction_type: str, category_name: str = "", key_suffix: str = "", use_expander: bool = True) -> str:
+    """Render advanced icon selector with suggestions and search"""
     
-    # CSS semplificato compatibile con Streamlit
-    st.markdown("""
-    <style>
-    .author-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 2rem;
-        border-radius: 15px;
-        text-align: center;
-        margin: 1rem 0;
-    }
-    .author-card h3 {
-        color: white !important;
-        margin-bottom: 1rem;
-    }
-    .author-card p {
-        color: rgba(255,255,255,0.9) !important;
-        margin-bottom: 1.5rem;
-    }
-    .social-link {
-        display: inline-block;
-        margin: 0.5rem;
-        padding: 0.5rem 1rem;
-        background: rgba(255,255,255,0.1);
-        border-radius: 20px;
-        color: white !important;
-        text-decoration: none;
-        border: 1px solid rgba(255,255,255,0.2);
-    }
-    .social-link:hover {
-        background: rgba(255,255,255,0.2);
-        transform: translateY(-2px);
-    }
-    </style>
-    """, unsafe_allow_html=True)
+    # Initialize session state for selected icon
+    selected_icon_key = f"selected_icon_{key_suffix}"
+    if selected_icon_key not in st.session_state:
+        st.session_state[selected_icon_key] = "💰"
     
-    # Contenuto principale con HTML semplificato
-    st.markdown("""
-    <div class="author-card">
-        <h3>🚀 Sviluppato da Alessandro Castaldi</h3>
-        <p>Software Engineer appassionato di tecnologie innovative e sviluppo di applicazioni web</p>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown("### 🎨 Seleziona Icona")
     
-    # Link social con layout Streamlit nativo
-    st.markdown("### 🔗 Contatti")
+    # Auto-suggestions based on category name
+    if category_name:
+        suggestions = IconLibrary.get_suggested_icons(category_name, transaction_type)
+        if suggestions:
+            st.markdown("**💡 Suggerimenti automatici:**")
+            
+            cols = st.columns(len(suggestions))
+            for i, icon in enumerate(suggestions):
+                with cols[i]:
+                    if st.button(icon, key=f"suggest_{icon}_{key_suffix}", 
+                               help=f"Usa {icon}",
+                               use_container_width=True):
+                        st.session_state[selected_icon_key] = icon
+                        st.rerun()
     
-    col1, col2, col3, col4 = st.columns(4)
+    # Search functionality
+    search_term = st.text_input(
+        "🔍 Cerca icone (es: casa, cibo, auto)",
+        key=f"icon_search_{key_suffix}",
+        help="Scrivi una parola per cercare icone correlate"
+    )
     
+    # Get icons based on search or show all for transaction type
+    if search_term:
+        available_icons = IconLibrary.search_icons(search_term, transaction_type)
+        st.caption(f"🔍 Risultati per '{search_term}': {len(available_icons)} icone")
+        
+        # Show flat grid for search results
+        if available_icons:
+            st.markdown("**🎯 Risultati ricerca:**")
+            cols_per_row = 10
+            icon_rows = [available_icons[i:i + cols_per_row] for i in range(0, len(available_icons), cols_per_row)]
+            
+            for row in icon_rows:
+                cols = st.columns(cols_per_row)
+                for j, icon in enumerate(row):
+                    with cols[j]:
+                        button_style = "🔹" if icon == st.session_state[selected_icon_key] else ""
+                        if st.button(f"{icon}{button_style}", 
+                                   key=f"search_{icon}_{key_suffix}",
+                                   help=f"Seleziona {icon}",
+                                   use_container_width=True):
+                            st.session_state[selected_icon_key] = icon
+                            st.rerun()
+    else:
+        icon_categories = IconLibrary.get_icons_for_transaction_type(transaction_type)
+        
+        # Show icons organized by category
+        st.markdown("**📂 Icone per categoria:**")
+        
+        # Use expander only if allowed, otherwise use collapsible sections with checkboxes
+        if use_expander:
+            for category, icons in icon_categories.items():
+                with st.expander(f"📂 {category} ({len(icons)} icone)", expanded=category in ["Lavoro", "Casa", "Alimentari"]):
+                    # Create grid of icon buttons
+                    cols_per_row = 8
+                    icon_rows = [icons[i:i + cols_per_row] for i in range(0, len(icons), cols_per_row)]
+                    
+                    for row in icon_rows:
+                        cols = st.columns(cols_per_row)
+                        for j, icon in enumerate(row):
+                            with cols[j]:
+                                button_style = "🔹" if icon == st.session_state[selected_icon_key] else ""
+                                if st.button(f"{icon}{button_style}", 
+                                           key=f"icon_{icon}_{category}_{key_suffix}",
+                                           help=f"Seleziona {icon}",
+                                           use_container_width=True):
+                                    st.session_state[selected_icon_key] = icon
+                                    st.rerun()
+        else:
+            # Alternative layout without expanders - use collapsible sections with session state
+            for category, icons in icon_categories.items():
+                # Use session state to track which sections are expanded
+                expanded_key = f"icon_category_expanded_{category}_{key_suffix}"
+                if expanded_key not in st.session_state:
+                    # Default expanded categories
+                    st.session_state[expanded_key] = category in ["Lavoro", "Casa", "Alimentari"]
+                
+                # Category header with toggle
+                col_header, col_toggle = st.columns([4, 1])
+                with col_header:
+                    st.markdown(f"**📂 {category} ({len(icons)} icone)**")
+                with col_toggle:
+                    if st.button("🔽" if st.session_state[expanded_key] else "▶️", 
+                               key=f"toggle_{category}_{key_suffix}",
+                               help="Espandi/Chiudi"):
+                        st.session_state[expanded_key] = not st.session_state[expanded_key]
+                        st.rerun()
+                
+                # Show icons if expanded
+                if st.session_state[expanded_key]:
+                    cols_per_row = 8
+                    icon_rows = [icons[i:i + cols_per_row] for i in range(0, len(icons), cols_per_row)]
+                    
+                    for row in icon_rows:
+                        cols = st.columns(cols_per_row)
+                        for j, icon in enumerate(row):
+                            with cols[j]:
+                                button_style = "🔹" if icon == st.session_state[selected_icon_key] else ""
+                                if st.button(f"{icon}{button_style}", 
+                                           key=f"icon_{icon}_{category}_{key_suffix}",
+                                           help=f"Seleziona {icon}",
+                                           use_container_width=True):
+                                    st.session_state[selected_icon_key] = icon
+                                    st.rerun()
+                
+                st.divider()
+        
+        # Add common icons section
+        common_icons = IconLibrary.COMMON_ICONS
+        
+        if use_expander:
+            with st.expander("⭐ Icone Comuni", expanded=True):
+                cols = st.columns(len(common_icons))
+                for i, icon in enumerate(common_icons):
+                    with cols[i]:
+                        button_style = "🔹" if icon == st.session_state[selected_icon_key] else ""
+                        if st.button(f"{icon}{button_style}", 
+                                   key=f"common_{icon}_{key_suffix}",
+                                   help=f"Seleziona {icon}",
+                                   use_container_width=True):
+                            st.session_state[selected_icon_key] = icon
+                            st.rerun()
+        else:
+            st.markdown("**⭐ Icone Comuni:**")
+            cols = st.columns(len(common_icons))
+            for i, icon in enumerate(common_icons):
+                with cols[i]:
+                    button_style = "🔹" if icon == st.session_state[selected_icon_key] else ""
+                    if st.button(f"{icon}{button_style}", 
+                               key=f"common_{icon}_{key_suffix}",
+                               help=f"Seleziona {icon}",
+                               use_container_width=True):
+                        st.session_state[selected_icon_key] = icon
+                        st.rerun()
+    
+    # Show selected icon
+    st.markdown("**✅ Icona selezionata:**")
+    col1, col2 = st.columns([1, 4])
     with col1:
-        st.markdown("""
-        <a href="mailto:notifiche72@gmail.com" class="social-link" target="_blank">
-            📧 Email
-        </a>
-        """, unsafe_allow_html=True)
-    
+        st.markdown(f"## {st.session_state[selected_icon_key]}")
     with col2:
-        st.markdown("""
-        <a href="https://github.com/blackeyes972" class="social-link" target="_blank">
-            🐙 GitHub
-        </a>
-        """, unsafe_allow_html=True)
+        st.info(f"Hai selezionato: **{st.session_state[selected_icon_key]}**")
+        if st.button("🔄 Reset a 💰", key=f"reset_icon_{key_suffix}"):
+            st.session_state[selected_icon_key] = "💰"
+            st.rerun()
     
-    with col3:
-        st.markdown("""
-        <a href="https://x.com/blackeyes972" class="social-link" target="_blank">
-            🐦 Twitter
-        </a>
-        """, unsafe_allow_html=True)
-    
-    with col4:
-        st.markdown("""
-        <a href="https://www.linkedin.com/in/alessandro-castaldi-663846a5/" class="social-link" target="_blank">
-            💼 LinkedIn
-        </a>
-        """, unsafe_allow_html=True)
-    
-    # Call to action
-    st.markdown("---")
-    st.info("⭐ Ti piace questo progetto? Lascia una stella su GitHub!")
-    
-    # Informazioni aggiuntive
-    with st.expander("📋 Dettagli Tecnici"):
-        col_a, col_b = st.columns(2)
-        
-        with col_a:
-            st.markdown("""
-            **🛠️ Tecnologie utilizzate:**
-            - Python 3.13+
-            - Streamlit 
-            - SQLAlchemy
-            - Plotly
-            - Pandas
-            """)
-        
-        with col_b:
-            st.markdown("""
-            **📊 Caratteristiche:**
-            - Database multipli
-            - Export/Import dati
-            - Grafici interattivi
-            - Gestione categorie
-            - Analisi finanziarie
-            """)
+    return st.session_state[selected_icon_key]
 
 # =============================================================================
 # DATA ACCESS LAYER (DAL)
@@ -1571,14 +1555,14 @@ class DatabaseManagementUI:
 
 def main():
     st.set_page_config(
-        page_title="Budget Familiare Professional",
+        page_title="Budget Familiare Pro",
         page_icon="💰",
         layout="wide",
         initial_sidebar_state="expanded"
     )
     
-    # Apply custom styling immediately
-    apply_custom_styling()
+    # Apply professional styling
+    hide_streamlit_ui()
     
     # Check for first run
     if check_first_run():
@@ -1593,7 +1577,7 @@ def main():
     # Check if we have a current database
     current_config = DatabaseRegistry.get_current_database_config()
     if not current_config:
-        render_custom_header()
+        st.title("💰 Budget Familiare Professional")
         st.warning("🔌 Nessun database attivo")
         st.info("🏗️ Seleziona o crea un database per continuare")
         
@@ -1623,8 +1607,8 @@ def main():
     transaction_dal = TransactionDAL(db_manager)
     category_manager = CategoryManager(db_manager)
     
-    # Render custom header instead of default title
-    render_custom_header()
+    # Header
+    st.title("💰 Budget Familiare Professional")
     
     # Show current database info
     if current_config:
@@ -1749,26 +1733,80 @@ def main():
                 for i, cat in enumerate(categories):
                     with cols[i % 4]:
                         st.markdown(f"**{cat['name']}**")
-                        st.color_picker("", value=cat['color'], key=f"color_view_{cat['id']}", disabled=True)
+                        st.color_picker(
+                            "Colore categoria", 
+                            value=cat['color'], 
+                            key=f"color_view_{cat['id']}", 
+                            disabled=True,
+                            label_visibility="hidden"
+                        )
             
-            # Add new category
-            with st.expander(f"➕ Aggiungi Categoria {trans_type}"):
-                with st.form(f"new_category_{trans_type}"):
-                    col1, col2 = st.columns(2)
-                    
-                    with col1:
-                        new_name = st.text_input("Nome categoria")
-                        new_icon = st.text_input("Icona", value="💰")
-                    
-                    with col2:
-                        new_color = st.color_picker("Colore", value="#3498db")
-                    
-                    if st.form_submit_button(f"Aggiungi {trans_type}"):
-                        if new_name:
-                            full_name = f"{new_icon} {new_name}" if not new_name.startswith(new_icon) else new_name
-                            if category_manager.add_category(full_name, trans_type, new_color, new_icon):
-                                st.success(f"✅ Categoria '{new_name}' aggiunta!")
-                                st.rerun()
+            # Add new category with advanced icon selector (NO EXPANDER)
+            st.markdown(f"### ➕ Aggiungi Nuova Categoria {trans_type}")
+            
+            # Initialize session state for category name to enable icon suggestions
+            category_name_key = f"new_category_name_{trans_type}"
+            if category_name_key not in st.session_state:
+                st.session_state[category_name_key] = ""
+            
+            # Category name input (outside form to enable real-time icon suggestions)
+            new_name = st.text_input(
+                "📝 Nome categoria",
+                value=st.session_state[category_name_key],
+                key=f"category_name_input_{trans_type}",
+                help="Inserisci il nome della categoria per vedere suggerimenti di icone",
+                on_change=lambda: setattr(st.session_state, category_name_key, st.session_state[f"category_name_input_{trans_type}"])
+            )
+            
+            # Update session state
+            st.session_state[category_name_key] = new_name
+            
+            # Show icon selector WITHOUT expander (use_expander=False)
+            selected_icon = render_icon_selector(trans_type, new_name, f"new_category_{trans_type}", use_expander=False)
+            
+            # Color picker
+            new_color = st.color_picker(
+                "🎨 Colore categoria", 
+                value="#3498db",
+                key=f"color_picker_{trans_type}"
+            )
+            
+            # Add category button
+            col_btn1, col_btn2 = st.columns([1, 1])
+            
+            with col_btn1:
+                if st.button(f"✅ Aggiungi Categoria {trans_type}", key=f"add_category_btn_{trans_type}", type="primary", use_container_width=True):
+                    if new_name.strip():
+                        # Create full name with icon
+                        full_name = f"{selected_icon} {new_name.strip()}"
+                        
+                        if category_manager.add_category(full_name, trans_type, new_color, selected_icon):
+                            st.success(f"✅ Categoria '{new_name}' aggiunta con icona {selected_icon}!")
+                            
+                            # Reset form
+                            st.session_state[category_name_key] = ""
+                            st.session_state[f"selected_icon_new_category_{trans_type}"] = "💰"
+                            
+                            st.rerun()
+                        else:
+                            st.error(f"❌ Errore nell'aggiunta della categoria '{new_name}'")
+                    else:
+                        st.error("❌ Il nome della categoria è obbligatorio!")
+            
+            with col_btn2:
+                if st.button(f"🔄 Reset Form", key=f"reset_category_form_{trans_type}", use_container_width=True):
+                    # Reset all form fields
+                    st.session_state[category_name_key] = ""
+                    st.session_state[f"selected_icon_new_category_{trans_type}"] = "💰"
+                    st.rerun()
+            
+            # Show preview
+            if new_name.strip():
+                st.markdown("**👀 Anteprima categoria:**")
+                preview_name = f"{selected_icon} {new_name.strip()}"
+                st.markdown(f"<div style='background-color: {new_color}; color: white; padding: 10px; border-radius: 5px; text-align: center; font-weight: bold;'>{preview_name}</div>", unsafe_allow_html=True)
+            
+            st.divider()
         
         # Unused categories warning
         if stats.get('unused_categories'):
@@ -1825,102 +1863,96 @@ def main():
     elif page == "⚙️ Impostazioni":
         st.header("⚙️ Impostazioni Applicazione")
         
-        # App Settings Tab
-        tab1, tab2, tab3 = st.tabs(["🎨 Interfaccia", "📂 File & Database", "👨‍💻 Info Sviluppatore"])
+        col1, col2 = st.columns(2)
         
-        with tab1:
+        with col1:
+            st.subheader("🎨 Interfaccia")
+            st.selectbox("Tema", ["Light", "Dark"], disabled=True)
+            st.selectbox("Lingua", ["Italiano", "English"], disabled=True)
+            st.selectbox("Valuta", ["EUR (€)", "USD ($)", "GBP (£)"], disabled=True)
+            
+        with col2:
+            st.subheader("🔔 Notifiche")
+            st.checkbox("Avvisi budget", disabled=True)
+            st.checkbox("Promemoria transazioni ricorrenti", disabled=True)
+            st.checkbox("Report mensili", disabled=True)
+        
+        st.info("🚧 Impostazioni in sviluppo - funzionalità in arrivo!")
+        
+        # File structure info
+        st.divider()
+        st.subheader("📂 Struttura File Organizzata")
+        
+        st.markdown("""
+        **L'applicazione organizza automaticamente i file in cartelle specifiche:**
+        
+        - **📁 `data/`** - Database SQLite (.db)
+        - **⚙️ `config/`** - File di configurazione (.json)  
+        - **📋 `logs/`** - File di log (.log)
+        - **📦 `backups/`** - Backup database (.db, .json)
+        - **📤 `exports/`** - Export dati (.json)
+        """)
+        
+        # Show actual file counts
+        try:
+            files_info = FileManager.list_files_by_type()
+            
             col1, col2 = st.columns(2)
             
             with col1:
-                st.subheader("🎨 Aspetto")
-                st.selectbox("Tema", ["Light", "Dark"], disabled=True)
-                st.selectbox("Lingua", ["Italiano", "English"], disabled=True)
-                st.selectbox("Valuta", ["EUR (€)", "USD ($)", "GBP (£)"], disabled=True)
-                
+                st.markdown("**File presenti:**")
+                for file_type, files in files_info.items():
+                    icon_map = {
+                        'databases': '💾',
+                        'configs': '⚙️', 
+                        'backups': '📦',
+                        'exports': '📤',
+                        'logs': '📋'
+                    }
+                    icon = icon_map.get(file_type, '📄')
+                    st.write(f"{icon} {file_type.title()}: {len(files)} file(s)")
+            
             with col2:
-                st.subheader("🔔 Notifiche")
-                st.checkbox("Avvisi budget", disabled=True)
-                st.checkbox("Promemoria transazioni ricorrenti", disabled=True)
-                st.checkbox("Report mensili", disabled=True)
-            
-            st.info("🚧 Impostazioni interfaccia in sviluppo - funzionalità in arrivo!")
+                st.markdown("**Percorsi cartelle:**")
+                st.code(f"data/     - {FileManager.DATA_DIR}")
+                st.code(f"config/   - {FileManager.CONFIG_DIR}")
+                st.code(f"backups/  - {FileManager.BACKUPS_DIR}")
+                st.code(f"exports/  - {FileManager.EXPORTS_DIR}")
+                st.code(f"logs/     - {FileManager.LOGS_DIR}")
+                
+        except Exception as e:
+            st.error(f"Errore lettura struttura file: {e}")
         
-        with tab2:
-            st.subheader("📂 Struttura File Organizzata")
-            
-            st.markdown("""
-            **L'applicazione organizza automaticamente i file in cartelle specifiche:**
-            
-            - **📁 `data/`** - Database SQLite (.db)
-            - **⚙️ `config/`** - File di configurazione (.json)  
-            - **📋 `logs/`** - File di log (.log)
-            - **📦 `backups/`** - Backup database (.db, .json)
-            - **📤 `exports/`** - Export dati (.json)
-            """)
-            
-            # Show actual file counts
+        # Migration info
+        if st.button("🔄 Verifica e Organizza File"):
             try:
-                files_info = FileManager.list_files_by_type()
-                
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    st.markdown("**File presenti:**")
-                    for file_type, files in files_info.items():
-                        icon_map = {
-                            'databases': '💾',
-                            'configs': '⚙️', 
-                            'backups': '📦',
-                            'exports': '📤',
-                            'logs': '📋'
-                        }
-                        icon = icon_map.get(file_type, '📄')
-                        st.write(f"{icon} {file_type.title()}: {len(files)} file(s)")
-                
-                with col2:
-                    st.markdown("**Percorsi cartelle:**")
-                    st.code(f"data/     - {FileManager.DATA_DIR}")
-                    st.code(f"config/   - {FileManager.CONFIG_DIR}")
-                    st.code(f"backups/  - {FileManager.BACKUPS_DIR}")
-                    st.code(f"exports/  - {FileManager.EXPORTS_DIR}")
-                    st.code(f"logs/     - {FileManager.LOGS_DIR}")
-                    
+                moved_files = FileManager.migrate_existing_files()
+                if moved_files:
+                    st.success(f"✅ File organizzati: {', '.join(moved_files)}")
+                else:
+                    st.info("ℹ️ Tutti i file sono già organizzati correttamente")
             except Exception as e:
-                st.error(f"Errore lettura struttura file: {e}")
-            
-            # Migration info
-            if st.button("🔄 Verifica e Organizza File"):
-                try:
-                    moved_files = FileManager.migrate_existing_files()
-                    if moved_files:
-                        st.success(f"✅ File organizzati: {', '.join(moved_files)}")
-                    else:
-                        st.info("ℹ️ Tutti i file sono già organizzati correttamente")
-                except Exception as e:
-                    st.error(f"❌ Errore organizzazione file: {e}")
-            
-            # Database configuration summary
-            st.divider()
-            st.subheader("📋 Riepilogo Configurazioni Database")
-            
-            configs = DatabaseRegistry.list_database_configs()
-            if configs:
-                config_data = []
-                for config in configs:
-                    config_data.append({
-                        'Nome': config['name'],
-                        'Tipo': config['type'].upper(),
-                        'Stato': '🟢 Attivo' if config['is_current'] else '⚫ Inattivo',
-                        'Ultimo Uso': config.get('last_used', 'Mai')[:10] if config.get('last_used') else 'Mai',
-                        'Creato': config.get('created_at', 'N/A')[:10] if config.get('created_at') else 'N/A'
-                    })
-                
-                st.dataframe(config_data, hide_index=True, use_container_width=True)
-            else:
-                st.info("Nessuna configurazione database salvata")
+                st.error(f"❌ Errore organizzazione file: {e}")
         
-        with tab3:
-            render_author_info()
+        # Database configuration summary
+        st.divider()
+        st.subheader("📋 Riepilogo Configurazioni")
+        
+        configs = DatabaseRegistry.list_database_configs()
+        if configs:
+            config_data = []
+            for config in configs:
+                config_data.append({
+                    'Nome': config['name'],
+                    'Tipo': config['type'].upper(),
+                    'Stato': '🟢 Attivo' if config['is_current'] else '⚫ Inattivo',
+                    'Ultimo Uso': config.get('last_used', 'Mai')[:10] if config.get('last_used') else 'Mai',
+                    'Creato': config.get('created_at', 'N/A')[:10] if config.get('created_at') else 'N/A'
+                })
+            
+            st.dataframe(config_data, hide_index=True, use_container_width=True)
+        else:
+            st.info("Nessuna configurazione database salvata")
 
 if __name__ == "__main__":
     main()
